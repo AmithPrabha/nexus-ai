@@ -260,6 +260,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/auth/login": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["redeemLoginCode"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/session": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["organizationSession"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/logout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["signOut"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -362,6 +410,14 @@ export interface components {
             request_id: string;
             /** Format: date-time */
             created_at: string;
+            /** Format: uuid */
+            tenant_id?: string;
+            /** Format: uuid */
+            actor_user_id?: string | null;
+            actor_role?: string | null;
+            ruleset?: string | null;
+            invoice_version?: number | null;
+            revision_no?: number | null;
         };
         Citation: {
             /** Format: uuid */
@@ -398,6 +454,22 @@ export interface components {
             input_tokens: null;
             output_tokens: null;
             estimated_cost_aed: null;
+        };
+        Member: {
+            /** Format: uuid */
+            tenant_id: string;
+            tenant_name: string;
+            /** Format: uuid */
+            user_id: string;
+            display_name: string;
+            /** @enum {string} */
+            role: "OWNER" | "ADMIN" | "REVIEWER" | "VIEWER";
+        };
+        OrganizationSession: {
+            /** Format: date-time */
+            expires_at: string;
+            csrf_token: string;
+            member: components["schemas"]["Member"];
         };
     };
     responses: never;
@@ -1019,6 +1091,106 @@ export interface operations {
                         };
                         invoices: Record<string, never>[];
                         questions: Record<string, never>[];
+                    };
+                };
+            };
+            /** @description Safe error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    redeemLoginCode: {
+        parameters: {
+            query?: never;
+            header: {
+                Origin: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    code: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Success */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrganizationSession"];
+                };
+            };
+            /** @description Safe error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    organizationSession: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrganizationSession"];
+                };
+            };
+            /** @description Safe error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    signOut: {
+        parameters: {
+            query?: never;
+            header: {
+                Origin: string;
+                "X-CSRF-Token": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Success */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        status: string;
                     };
                 };
             };

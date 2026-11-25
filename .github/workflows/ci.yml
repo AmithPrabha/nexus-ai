@@ -21,10 +21,11 @@ jobs:
         with: {version: '0.8.15'}
       - run: uv python install 3.12
       - run: make test lint web-check security
-      - run: make up migrate smoke integration policy
+      - run: make up migrate smoke integration policy tenant-check
       - working-directory: apps/web
         run: npx playwright install --with-deps chromium
       - working-directory: apps/web
+        env: {NEXUS_E2E_PROJECT: nexusai}
         run: npm run e2e
       - run: make sandbox sandbox-check
       - run: make eval

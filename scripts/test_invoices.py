@@ -7,7 +7,6 @@ import uuid
 import httpx
 import psycopg
 from redis import Redis
-
 from smoke import Client
 
 V1 = "/api/v1"
@@ -111,6 +110,16 @@ def public_checks():
         assert (
             history[-1]["actor"] == "demo_reviewer" and history[-1]["action"] == choice
         )
+        assert set(c.request("GET", path + "/audit?limit=1")["items"][0]) == {
+            "id",
+            "actor",
+            "action",
+            "from_state",
+            "to_state",
+            "reason",
+            "request_id",
+            "created_at",
+        }
         assert c.request("GET", path + "/audit?limit=1")["next_cursor"]
     dup = until_ready(c, create(c, "office-supplies"))
     assert "DUPLICATE_INVOICE" in [r["rule_code"] for r in dup["validation_results"]]

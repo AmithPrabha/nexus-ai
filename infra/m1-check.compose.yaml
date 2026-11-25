@@ -1,0 +1,6 @@
+# Separate host ports for a second local project. Select its database with -p.
+services:
+  web:
+    ports: !override ["127.0.0.1:${M1_WEB_PORT:-13317}:3000"]
+  gateway:
+    ports: !override ["127.0.0.1:${M1_GATEWAY_PORT:-18317}:8080"]

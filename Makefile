@@ -45,3 +45,7 @@ sandbox-check:
 .PHONY: sandbox-down
 sandbox-down:
 	docker compose -f compose.yaml -f infra/n8n.compose.yaml down
+
+.PHONY: tenant-check
+tenant-check:
+	docker compose -f compose.yaml -f infra/checks.compose.yaml run --build --rm integration /checks/test_tenants.py

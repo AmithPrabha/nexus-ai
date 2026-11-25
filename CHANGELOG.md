@@ -33,3 +33,7 @@ Record actual changes only. Use Added, Changed, Fixed, Security, Known limitatio
 - Added 20 labeled evaluation PDFs, 30 policy questions, a disposable Compose benchmark and reports with measured outcomes, per-case evidence and nearest-rank latencies.
 - Added an optional isolated n8n workflow, signed receipt handling, bounded delivery retries and delivery status in invoice detail. The default mode records local receipts. Added the browser walkthrough and release instructions.
 - Verified stream recovery after a lost ACK, denied replay/tampering, workspace isolation, quota enforcement and the generated API client. CI includes migration, integration, browser, evaluation and secret checks.
+
+## 2026-11-25 · Production M1
+
+Added durable company ownership, named local sign-in, role-based approval, scoped PostgreSQL policies, preserved legacy history, organization UI and local integration/browser coverage. The work was verified on isolated synthetic data. [File inventory](docs/CHANGELOG.md) · [Verification](docs/PROGRESS.md)

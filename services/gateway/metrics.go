@@ -5,13 +5,13 @@ import (
 	"errors"
 	"net/http"
 	"os"
-	"strings"
+	"time"
 )
 
 func (a *app) metrics(w http.ResponseWriter, r *http.Request) error {
 	var invoices, pending, runs, failures, notes int
 	var latency *float64
-	err := a.db.QueryRow(r.Context(), `SELECT
+	err := a.reader(r.Context()).QueryRow(r.Context(), `SELECT
       (SELECT count(*) FROM invoices WHERE workspace_id=$1),
       (SELECT count(*) FROM invoices WHERE workspace_id=$1 AND status IN ('READY_FOR_APPROVAL','PENDING_REVIEW')),
       count(*),count(*) FILTER(WHERE status='failed'),avg(latency_ms)::float8,
@@ -33,6 +33,9 @@ func evaluation(w http.ResponseWriter, r *http.Request) error {
 	return send(w, 200, json.RawMessage(b))
 }
 func (a *app) reset(w http.ResponseWriter, r *http.Request) error {
+	if principal(r.Context()).Member != nil {
+		return forbidden
+	}
 	if r.ContentLength != 0 {
 		var empty struct{}
 		if err := decode(w, r, &empty); err != nil {
@@ -43,6 +46,6 @@ func (a *app) reset(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	http.SetCookie(w, &http.Cookie{Name: "nexus_session", Path: "/api/v1", Value: "", MaxAge: -1, Secure: strings.HasPrefix(a.origin, "https://"), HttpOnly: true, SameSite: http.SameSiteLaxMode})
+	a.sessionCookie(w, "", time.Time{})
 	return send(w, 200, data{"status": "expired"})
 }

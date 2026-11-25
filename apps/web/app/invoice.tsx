@@ -4,6 +4,7 @@ import { api, headers, Model, statusText, value } from "../lib/client";
 
 type Props = {
   id?: string;
+  member: Model<"Member"> | null;
   samples: Model<"Sample">[];
   token: string;
   refresh: () => void;
@@ -17,7 +18,7 @@ export function State({ status }: { status: string }) {
     </span>
   );
 }
-export default function Auditor({ id, samples, token, refresh }: Props) {
+export default function Auditor({ id, samples, token, member, refresh }: Props) {
   const [sample, choose] = useState("office-supplies");
   const [detail, setDetail] = useState<Model<"Detail"> | null>(null);
   const [audit, setAudit] = useState<Model<"Audit">[]>([]);
@@ -73,7 +74,9 @@ export default function Auditor({ id, samples, token, refresh }: Props) {
     (s) => s.sample_id === (detail?.invoice.sample_id || sample),
   );
   const status = detail?.invoice.status || "";
-  const editable = ["READY_FOR_APPROVAL", "PENDING_REVIEW"].includes(status);
+  const canWrite = member?.role !== "VIEWER";
+  const canApprove = member?.role !== "REVIEWER" || status !== "PENDING_REVIEW";
+  const editable = canWrite && ["READY_FOR_APPROVAL", "PENDING_REVIEW"].includes(status);
   async function action(fn: () => Promise<void>) {
     setError("");
     setBusy(true);
@@ -155,7 +158,8 @@ export default function Auditor({ id, samples, token, refresh }: Props) {
           {error} {id && <button onClick={load}>Refresh invoice</button>}
         </div>
       )}
-      {!id && (
+      {!id && !canWrite && <p>Your viewer role can inspect invoices in the <a href="#queue">review queue</a>.</p>}
+      {!id && canWrite && (
         <section className="panel pad">
           <h2>Select a sample</h2>
           <div className="formrow">
@@ -198,12 +202,12 @@ export default function Auditor({ id, samples, token, refresh }: Props) {
           {["QUEUED", "PROCESSING"].includes(status) && (
             <p role="status">Waiting for the mock extraction worker…</p>
           )}
-          {status === "FAILED" && (
+          {canWrite && status === "FAILED" && (
             <button disabled={busy} onClick={retry}>
               Retry extraction
             </button>
           )}
-          <a href="#auditor">Select another sample</a>
+          {canWrite && <a href="#auditor">Select another sample</a>}
         </section>
       )}
       {chosen && (
@@ -316,6 +320,7 @@ export default function Auditor({ id, samples, token, refresh }: Props) {
       {editable && (
         <section className="panel pad">
           <h2>Review decision</h2>
+          {!canApprove && <p>An owner or admin must approve unresolved findings. You can correct the fields and run the checks again.</p>}
           <label>
             Review reason
             <textarea
@@ -337,11 +342,11 @@ export default function Auditor({ id, samples, token, refresh }: Props) {
               disabled={
                 busy ||
                 !!Object.keys(edits).length ||
-                (status === "PENDING_REVIEW" && !reason.trim())
+                !canApprove || (status === "PENDING_REVIEW" && !reason.trim())
               }
               onClick={() => decide("approve")}
             >
-              Simulate approval
+              {member ? "Approve as " + member.display_name : "Simulate approval"}
             </button>
             <button
               disabled={busy || !!Object.keys(edits).length || !reason.trim()}
@@ -366,7 +371,7 @@ export default function Auditor({ id, samples, token, refresh }: Props) {
               <li key={a.id}>
                 <strong>{statusText(a.to_state)}</strong>
                 <span>
-                  {a.actor.replaceAll("_", " ")} ·{" "}
+                  {a.actor_user_id ? a.actor : a.actor.replaceAll("_", " ")} ·{" "}
                   {new Date(a.created_at).toLocaleTimeString()}
                 </span>
                 <p>{a.reason}</p>

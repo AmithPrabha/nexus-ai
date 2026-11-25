@@ -72,6 +72,7 @@ def answer(dsn: str, workspace: str, question: str) -> dict:
         connect_timeout=3,
         options="-c statement_timeout=3000 -c default_transaction_read_only=on",
     ) as db:
+        db.execute("SELECT set_config('nexus.tenant',%s,true)", (workspace,))
         scope = """ FROM policy_chunks c JOIN workspace_policies w ON w.policy_id=c.policy_id
             WHERE w.workspace_id=%s AND c.embedding_version=%s """
         vector = db.execute(

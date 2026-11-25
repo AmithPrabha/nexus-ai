@@ -50,7 +50,7 @@ func (a *app) resolve(ctx context.Context, work string, c candidate) (policyAnsw
 		return out, nil
 	}
 	var s source
-	err = a.db.QueryRow(ctx, `SELECT c.id,p.title,p.version,c.page,c.clause,c.body FROM policy_chunks c JOIN policies p ON p.id=c.policy_id JOIN workspace_policies w ON w.policy_id=p.id WHERE c.id=$1 AND w.workspace_id=$2`, id, work).Scan(&s.Chunk, &s.Title, &s.Version, &s.Page, &s.Clause, &s.Excerpt)
+	err = a.reader(ctx).QueryRow(ctx, `SELECT c.id,p.title,p.version,c.page,c.clause,c.body FROM policy_chunks c JOIN policies p ON p.id=c.policy_id JOIN workspace_policies w ON w.policy_id=p.id WHERE c.id=$1 AND w.workspace_id=$2`, id, work).Scan(&s.Chunk, &s.Title, &s.Version, &s.Page, &s.Clause, &s.Excerpt)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return out, nil
 	}
@@ -109,7 +109,7 @@ func (a *app) ask(w http.ResponseWriter, r *http.Request) error {
 	} else if out.Abstained {
 		result = "abstained"
 	}
-	_, dbErr := a.db.Exec(ctx, "INSERT INTO ai_runs(workspace_id,operation,mode,latency_ms,status) VALUES($1,'policy','mock',$2,$3)", work, latency, result)
+	_, dbErr := a.reader(ctx).Exec(ctx, "INSERT INTO ai_runs(workspace_id,operation,mode,latency_ms,status) VALUES($1,'policy','mock',$2,$3)", work, latency, result)
 	if dbErr != nil {
 		return dbErr
 	}

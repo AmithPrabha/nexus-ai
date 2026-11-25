@@ -3,6 +3,13 @@ import { useCallback, useEffect, useState } from "react";
 import { api, headers, Model, value } from "../lib/client";
 import Auditor, { State } from "./invoice";
 import Policy from "./policy";
+import SignIn from "./sign-in";
+import Link from "next/link";
+
+function openOrganizationSignIn() {
+  if (location.pathname === "/organization") location.reload();
+  else location.replace("/organization");
+}
 
 const views = {
   overview: "Overview",
@@ -68,6 +75,8 @@ function InvoiceList({
   );
 }
 export default function Workspace() {
+  const [member, setMember] = useState<Model<"Member"> | null>(null);
+  const [needsLogin, setNeedsLogin] = useState(false);
   const [view, setView] = useState<View>("overview"),
     [id, setID] = useState<string>();
   const [token, setToken] = useState(""),
@@ -117,11 +126,17 @@ export default function Workspace() {
     let live = true;
     async function open() {
       try {
-        const s = value(
-          await api.POST("/api/v1/demo/sessions", {
-            params: { header: { Origin: location.origin } },
-          }),
-        );
+        const identity = await api.GET("/api/v1/auth/session");
+        if (!live) return;
+        if (identity.error && identity.response.status !== 401) throw new Error(identity.error.error.message);
+        if (!identity.data && location.pathname === "/organization") {
+          setNeedsLogin(true);
+          return;
+        }
+        const s = identity.data ?? value(await api.POST("/api/v1/demo/sessions", {
+          params: { header: { Origin: location.origin } },
+        }));
+        setMember(identity.data?.member ?? null);
         const all = value(await api.GET("/api/v1/samples"));
         if (!live) return;
         setToken(s.csrf_token);
@@ -148,8 +163,19 @@ export default function Workspace() {
       return () => window.clearInterval(timer);
     }
   }, [view, token, refresh]);
+  useEffect(() => {
+    if (!member) return;
+    const expired = openOrganizationSignIn;
+    window.addEventListener("nexus-session-ended", expired);
+    return () => window.removeEventListener("nexus-session-ended", expired);
+  }, [member]);
   async function reset() {
     try {
+      if (member) {
+        value(await api.POST("/api/v1/auth/logout", { params: { header: headers(token) } }));
+        openOrganizationSignIn();
+        return;
+      }
       value(
         await api.POST("/api/v1/demo/reset", {
           params: { header: headers(token) },
@@ -187,7 +213,7 @@ export default function Workspace() {
         </a>
         <p className="navlabel">Workspace</p>
         <nav>
-          {(Object.keys(views) as View[]).map((v) => (
+          {(Object.keys(views) as View[]).filter(v => member?.role !== "VIEWER" || v !== "auditor").map((v) => (
             <a
               key={v}
               aria-current={v === view ? "page" : undefined}
@@ -199,11 +225,12 @@ export default function Workspace() {
           ))}
         </nav>
         <div className="sidefoot">
-          <b>Demo session</b>
-          <small>Isolated · 24-hour expiry</small>
-          <button onClick={reset} disabled={!token}>
-            Reset demo
-          </button>
+          <b>{member?.tenant_name || (needsLogin ? "Organization" : "Demo session")}</b>
+          <small>{member ? member.display_name + " · " + member.role : needsLogin ? "Sign-in required" : "Isolated · 24-hour expiry"}</small>
+          {!needsLogin && <button onClick={reset} disabled={!token}>
+            {member ? "Sign out" : "Reset demo"}
+          </button>}
+          {!member && !needsLogin && <Link href="/organization">Organization sign-in</Link>}
         </div>
       </aside>
       <main id="main" tabIndex={-1}>
@@ -231,7 +258,8 @@ export default function Workspace() {
               </button>
             </p>
           )}
-          {!token && !error && <p role="status">Opening your demo session…</p>}
+          {needsLogin && <SignIn />}
+          {!needsLogin && !token && !error && <p role="status">Opening your demo session…</p>}
           {token && view === "overview" && (
             <div className="stack">
               <section className="hero">
@@ -240,10 +268,10 @@ export default function Workspace() {
                   <h2>Invoice review desk</h2>
                   <p>
                     Process a fictional UAE invoice, inspect its evidence and
-                    record a simulated decision.
+                    review its financial checks.
                   </p>
-                  <a className="lightbutton" href="#auditor">
-                    Review an invoice
+                  <a className="lightbutton" href={member?.role === "VIEWER" ? "#queue" : "#auditor"}>
+                    {member?.role === "VIEWER" ? "View invoices" : "Review an invoice"}
                   </a>
                 </div>
                 <div className="paper" aria-hidden>
@@ -300,6 +328,7 @@ export default function Workspace() {
               id={id}
               samples={samples}
               token={token}
+              member={member}
               refresh={refresh}
             />
           )}

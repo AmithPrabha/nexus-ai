@@ -45,3 +45,7 @@ The implementation is under apps/web, services/gateway and services/ai. The supp
 The optional sandbox is running on this Mac. Open http://localhost:3000 and follow the README walkthrough. To reproduce from stopped services run `make sandbox sandbox-check`. To stop this stack while retaining data run `make sandbox-down`. The worker has no HTTP health endpoint; live job and reclaim tests verified its behavior.
 
 Remaining release decisions are the hosting region, budget, production HTTPS/proxy topology, backup and restore checks, and approval to publish. The current web proxy shares its per-peer allowance. Real-model evaluation, human answer-quality ratings, OCR, private uploads and bilingual extraction are outside the verified release. Remote GitHub Actions and public URL checks require a push and deployment.
+
+## 2026-11-25 · Production M1
+
+The later M1 instruction authorized local implementation on top of audited commit dc8a58d. Migrations 007–008, named memberships, scoped Go transactions and company review are implemented. A separate Compose project passed the database upgrade, authorization and concurrency checks, three browser scenarios and existing workflow regressions. The default project database remained on 006. [Full verification record](docs/PROGRESS.md) · [Local operator and rollback guide](docs/SECURITY.md)

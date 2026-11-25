@@ -23,7 +23,7 @@ func (a *app) dispatch(ctx context.Context) {
 		case <-tick.C:
 			err := pgx.BeginFunc(ctx, a.db, func(tx pgx.Tx) error {
 				var event, job, work, doc string
-				err := tx.QueryRow(ctx, `SELECT o.id,j.id,i.workspace_id,i.sample_id FROM outbox o JOIN jobs j ON j.id=o.job_id JOIN invoices i ON i.id=j.invoice_id JOIN workspaces w ON w.id=i.workspace_id WHERE available_at<=now() AND w.expires_at>now() AND ((j.status='QUEUED' AND j.next_attempt_at<=now()) OR (j.status='PROCESSING' AND j.lease_until<=now())) ORDER BY available_at FOR UPDATE OF o SKIP LOCKED LIMIT 1`).Scan(&event, &job, &work, &doc)
+				err := tx.QueryRow(ctx, `SELECT o.id,j.id,i.workspace_id,i.sample_id FROM outbox o JOIN jobs j ON j.id=o.job_id JOIN invoices i ON i.id=j.invoice_id JOIN active_tenants w ON w.id=i.workspace_id WHERE available_at<=now() AND ((j.status='QUEUED' AND j.next_attempt_at<=now()) OR (j.status='PROCESSING' AND j.lease_until<=now())) ORDER BY available_at FOR UPDATE OF o SKIP LOCKED LIMIT 1`).Scan(&event, &job, &work, &doc)
 				if errors.Is(err, pgx.ErrNoRows) {
 					return nil
 				}

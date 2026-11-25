@@ -49,17 +49,29 @@ func pathID(r *http.Request) (string, error) {
 	return id.String(), nil
 }
 func transact(ctx context.Context, db *app, workspace string, op func(pgx.Tx) error) error {
-	return pgx.BeginFunc(ctx, db.db, func(tx pgx.Tx) error {
-		// Serialize writes within one short-lived workspace, including duplicate checks.
+	locked := func(tx pgx.Tx) error {
+		// Serialize duplicate checks and transitions for this ownership scope.
+		if _, err := tx.Exec(ctx, "SELECT pg_advisory_xact_lock(hashtextextended($1,731))", workspace); err != nil {
+			return err
+		}
 		var id string
-		if err := tx.QueryRow(ctx, "SELECT id FROM workspaces WHERE id=$1 AND expires_at>now() FOR UPDATE", workspace).Scan(&id); err != nil {
+		if err := tx.QueryRow(ctx, "SELECT id FROM active_tenants WHERE id=$1", workspace).Scan(&id); err != nil {
 			return noRows(err)
 		}
 		return op(tx)
-	})
+	}
+	if tx, ok := ctx.Value(transactionKey{}).(pgx.Tx); ok {
+		return locked(tx)
+	}
+	return pgx.BeginFunc(ctx, db.db, locked)
 }
 func audit(ctx context.Context, tx pgx.Tx, id, actor, action string, from any, to, reason, requestID string) error {
-	_, err := tx.Exec(ctx, "INSERT INTO audit_events(invoice_id,actor,action,from_state,to_state,reason,request_id) VALUES($1,$2,$3,$4,$5,$6,$7)", id, actor, action, from, to, reason, requestID)
+	var userID, role *string
+	if m := principal(ctx).Member; m != nil {
+		userID, role = &m.UserID, &m.Role
+		actor = m.DisplayName
+	}
+	_, err := tx.Exec(ctx, "INSERT INTO audit_events(invoice_id,actor,action,from_state,to_state,reason,request_id,actor_user_id,actor_role,ruleset) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,'aed-demo-v1')", id, actor, action, from, to, reason, requestID, userID, role)
 	return err
 }
 func quotaKeys(a *app, r *http.Request) []string {
@@ -186,12 +198,8 @@ func (a *app) getInvoice(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	var result data
-	err = pgx.BeginTxFunc(r.Context(), a.db, pgx.TxOptions{IsoLevel: pgx.RepeatableRead, AccessMode: pgx.ReadOnly}, func(tx pgx.Tx) error {
-		var err error
-		result, err = a.detail(r.Context(), tx, scope(r), id)
-		return err
-	})
+	tx := r.Context().Value(transactionKey{}).(pgx.Tx)
+	result, err := a.detail(r.Context(), tx, scope(r), id)
 	if err != nil {
 		return err
 	}
@@ -221,7 +229,7 @@ func (a *app) listInvoices(w http.ResponseWriter, r *http.Request) error {
 		}
 		cursor = parsed.String()
 	}
-	rows, err := a.db.Query(r.Context(), invoiceSelect+`WHERE workspace_id=$1 AND ($2='' OR status=$2) AND (NULLIF($3,'')::uuid IS NULL OR i.id<NULLIF($3,'')::uuid) ORDER BY i.id DESC LIMIT $4`, scope(r), r.URL.Query().Get("status"), cursor, n+1)
+	rows, err := a.reader(r.Context()).Query(r.Context(), invoiceSelect+`WHERE workspace_id=$1 AND ($2='' OR status=$2) AND (NULLIF($3,'')::uuid IS NULL OR i.id<NULLIF($3,'')::uuid) ORDER BY i.id DESC LIMIT $4`, scope(r), r.URL.Query().Get("status"), cursor, n+1)
 	if err != nil {
 		return err
 	}
@@ -252,7 +260,7 @@ func (a *app) jobInfo(w http.ResponseWriter, r *http.Request) error {
 	var status string
 	var attempts int
 	var code *string
-	err = a.db.QueryRow(r.Context(), "SELECT j.status,j.attempts,j.error_code FROM jobs j JOIN invoices i ON i.id=j.invoice_id WHERE j.id=$1 AND i.workspace_id=$2", id, scope(r)).Scan(&status, &attempts, &code)
+	err = a.reader(r.Context()).QueryRow(r.Context(), "SELECT j.status,j.attempts,j.error_code FROM jobs j JOIN invoices i ON i.id=j.invoice_id WHERE j.id=$1 AND i.workspace_id=$2", id, scope(r)).Scan(&status, &attempts, &code)
 	if err != nil {
 		return noRows(err)
 	}
@@ -276,13 +284,19 @@ func (a *app) history(w http.ResponseWriter, r *http.Request) error {
 		}
 	}
 	var own bool
-	if err = a.db.QueryRow(ctx, "SELECT EXISTS(SELECT FROM invoices WHERE id=$1 AND workspace_id=$2)", id, scope(r)).Scan(&own); err != nil {
+	if err = a.reader(ctx).QueryRow(ctx, "SELECT EXISTS(SELECT FROM invoices WHERE id=$1 AND workspace_id=$2)", id, scope(r)).Scan(&own); err != nil {
 		return err
 	}
 	if !own {
 		return missing
 	}
-	rows, err := a.db.Query(ctx, `SELECT e.id,to_jsonb(e)-'invoice_id' FROM audit_events e JOIN invoices i ON i.id=e.invoice_id WHERE i.workspace_id=$1 AND i.id=$2 AND e.id>$3 ORDER BY e.id LIMIT $4`, scope(r), id, cursor, n+1)
+	// The original demo schema rejects unknown keys. Only expose the extended
+	// provenance to organization clients while retaining it in the database.
+	hidden := []string{"invoice_id"}
+	if principal(ctx).Member == nil {
+		hidden = append(hidden, "tenant_id", "actor_user_id", "actor_role", "invoice_version", "revision_no", "ruleset")
+	}
+	rows, err := a.reader(ctx).Query(ctx, `SELECT e.id,to_jsonb(e)-$5::text[] FROM audit_events e JOIN invoices i ON i.id=e.invoice_id WHERE i.workspace_id=$1 AND i.id=$2 AND e.id>$3 ORDER BY e.id LIMIT $4`, scope(r), id, cursor, n+1, hidden)
 	if err != nil {
 		return err
 	}
@@ -318,7 +332,12 @@ func revision(ctx context.Context, tx pgx.Tx, i invoice, work, actor, reason, re
 	if len(rules) > 0 {
 		status = "PENDING_REVIEW"
 	}
-	_, err = tx.Exec(ctx, "INSERT INTO invoice_revisions(invoice_id,revision_no,fields,evidence,warnings,validation_results,actor) VALUES($1,$2,$3,$4,$5,$6,$7)", i.ID, i.Revision+1, x.Fields, x.Evidence, x.Warnings, rules, actor)
+	var actorID *string
+	if m := principal(ctx).Member; m != nil {
+		actorID = &m.UserID
+		actor = m.DisplayName
+	}
+	_, err = tx.Exec(ctx, "INSERT INTO invoice_revisions(invoice_id,revision_no,fields,evidence,warnings,validation_results,actor,actor_user_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8)", i.ID, i.Revision+1, x.Fields, x.Evidence, x.Warnings, rules, actor, actorID)
 	if err != nil {
 		return err
 	}
@@ -331,7 +350,7 @@ func revision(ctx context.Context, tx pgx.Tx, i invoice, work, actor, reason, re
 		for _, r := range rules {
 			codes = append(codes, r.Code)
 		}
-		_, err = tx.Exec(ctx, "INSERT INTO sandbox_notifications(invoice_id,version,reason_codes,delivery_state) VALUES($1,$2,$3,'PENDING')", i.ID, i.Version+1, codes)
+		_, err = tx.Exec(ctx, "INSERT INTO sandbox_notifications(invoice_id,version,reason_codes,delivery_state) SELECT $1,$2,$3,'PENDING' WHERE EXISTS(SELECT FROM tenants WHERE id=$4 AND kind='DEMO')", i.ID, i.Version+1, codes, work)
 		if err != nil {
 			return err
 		}
@@ -392,6 +411,9 @@ func (a *app) review(decision bool) handler {
 			if !reviewable(i.Status) || version != i.Version {
 				return conflict
 			}
+			if m := principal(ctx).Member; m != nil && m.Role == "REVIEWER" && decision && action == "approve" && i.Status == "PENDING_REVIEW" {
+				return denied
+			}
 			if reason == "" && (!decision || action == "reject" || i.Status == "PENDING_REVIEW") {
 				return invalid
 			}
@@ -427,12 +449,12 @@ func (a *app) review(decision bool) handler {
 	}
 }
 func (a *app) invoiceRoutes(s chi.Router) {
-	s.Get("/invoices", endpoint(a.listInvoices))
-	s.Post("/invoices", endpoint(a.enqueue(false)))
-	s.Get("/invoices/{id}", endpoint(a.getInvoice))
-	s.Get("/jobs/{id}", endpoint(a.jobInfo))
-	s.Patch("/invoices/{id}/review", endpoint(a.review(false)))
-	s.Post("/invoices/{id}/decision", endpoint(a.review(true)))
-	s.Post("/invoices/{id}/retry", endpoint(a.enqueue(true)))
-	s.Get("/invoices/{id}/audit", endpoint(a.history))
+	s.Get("/invoices", a.tenantEndpoint(readAccess, a.listInvoices))
+	s.Post("/invoices", a.tenantEndpoint(writeInvoice, a.enqueue(false)))
+	s.Get("/invoices/{id}", a.tenantEndpoint(readAccess, a.getInvoice))
+	s.Get("/jobs/{id}", a.tenantEndpoint(readAccess, a.jobInfo))
+	s.Patch("/invoices/{id}/review", a.tenantEndpoint(writeInvoice, a.review(false)))
+	s.Post("/invoices/{id}/decision", a.tenantEndpoint(writeInvoice, a.review(true)))
+	s.Post("/invoices/{id}/retry", a.tenantEndpoint(writeInvoice, a.enqueue(true)))
+	s.Get("/invoices/{id}/audit", a.tenantEndpoint(readAccess, a.history))
 }

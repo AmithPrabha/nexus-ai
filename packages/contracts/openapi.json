@@ -1148,6 +1148,155 @@
           }
         ]
       }
+    },
+    "/api/v1/auth/login": {
+      "post": {
+        "operationId": "redeemLoginCode",
+        "responses": {
+          "201": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrganizationSession"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Safe error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "code": {
+                    "type": "string",
+                    "minLength": 43,
+                    "maxLength": 43
+                  }
+                },
+                "required": [
+                  "code"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/session": {
+      "get": {
+        "operationId": "organizationSession",
+        "security": [
+          {
+            "demoSession": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrganizationSession"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Safe error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/logout": {
+      "post": {
+        "operationId": "signOut",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "status"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Safe error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "demoSession": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-CSRF-Token",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
     }
   },
   "components": {
@@ -1548,6 +1697,41 @@
           "created_at": {
             "type": "string",
             "format": "date-time"
+          },
+          "tenant_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "actor_user_id": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "actor_role": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "ruleset": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "invoice_version": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "revision_no": {
+            "type": [
+              "integer",
+              "null"
+            ]
           }
         },
         "required": [
@@ -1718,6 +1902,63 @@
           "input_tokens",
           "output_tokens",
           "estimated_cost_aed"
+        ],
+        "additionalProperties": false
+      },
+      "Member": {
+        "type": "object",
+        "properties": {
+          "tenant_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "tenant_name": {
+            "type": "string"
+          },
+          "user_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "display_name": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "OWNER",
+              "ADMIN",
+              "REVIEWER",
+              "VIEWER"
+            ]
+          }
+        },
+        "required": [
+          "tenant_id",
+          "tenant_name",
+          "user_id",
+          "display_name",
+          "role"
+        ],
+        "additionalProperties": false
+      },
+      "OrganizationSession": {
+        "type": "object",
+        "properties": {
+          "expires_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "csrf_token": {
+            "type": "string"
+          },
+          "member": {
+            "$ref": "#/components/schemas/Member"
+          }
+        },
+        "required": [
+          "expires_at",
+          "csrf_token",
+          "member"
         ],
         "additionalProperties": false
       }

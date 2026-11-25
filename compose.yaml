@@ -55,6 +55,7 @@ services:
     environment:
       DATABASE_URL: postgres://nexus_gateway:${GATEWAY_PASSWORD:?}@postgres/nexus?sslmode=disable
       REDIS_ADDR: redis:6379
+      ORGANIZATION_ACCESS: ${ORGANIZATION_ACCESS:-enabled}
       PUBLIC_ORIGIN: ${PUBLIC_ORIGIN:-http://localhost:3000}
       SERVICE_TOKEN: ${SERVICE_TOKEN:?}
     healthcheck:

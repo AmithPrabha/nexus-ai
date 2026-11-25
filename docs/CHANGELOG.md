@@ -1,0 +1,15 @@
+# Milestone changelog
+
+## 25 November 2026 · M1 durable multi-tenancy and named approvals
+
+| Changed area | Files | Outcome |
+|---|---|---|
+| Database | [007_tenant_identity.sql](../migrations/007_tenant_identity.sql), [008_identity_constraints.sql](../migrations/008_identity_constraints.sql) | Preserves existing IDs and history, adds company identities, sessions, membership roles, row policies, matching ownership constraints and audit provenance. Migrations 001–006 retain their original checksums. |
+| Business API | [identity.go](../services/gateway/identity.go), [main.go](../services/gateway/main.go), [invoices.go](../services/gateway/invoices.go), [jobs.go](../services/gateway/jobs.go), [metrics.go](../services/gateway/metrics.go), [policy.go](../services/gateway/policy.go) | Code redemption, org context, sign-out, role checks under lock, scoped queries, named audit and company jobs that survive session expiry. All existing financial rules and public invoice paths are preserved. |
+| Policy reader | [retrieve.py](../services/ai/app/retrieve.py) | Sets transaction-local scope for database-enforced policy assignments. Worker extraction retains its existing private contract. |
+| Dashboard | [workspace](../apps/web/app/page.tsx), [organization route](../apps/web/app/organization/page.tsx), [sign-in](../apps/web/app/sign-in.tsx), [auditor](../apps/web/app/invoice.tsx), [client](../apps/web/lib/client.ts) | Sign-in, active company, role, authorized review controls, named approval, session expiry handling and shared evidence viewer. |
+| Contract | [public OpenAPI](../packages/contracts/openapi.json), [generated types](../apps/web/lib/schema.d.ts), [HTTP contract](../API_CONTRACTS.md) | Three additive organization endpoints and compatible audit metadata. |
+| Operation and verification | [operator CLI](../scripts/identity.py), [tenant integration suite](../scripts/test_tenants.py), [demo contract regression](../scripts/test_invoices.py), [organization browser test](../apps/web/tests/organization.spec.ts), [Makefile](../Makefile), [CI](../.github/workflows/ci.yml), [Compose](../compose.yaml), [isolated ports](../infra/m1-check.compose.yaml), [environment example](../.env.example) | Reproducible operator issuance and local two-company verification. Organization access can be paused independently of demo access. |
+| Project documentation | [architecture](ARCHITECTURE.md), [decisions](DECISIONS.md), [gap analysis baseline](PRODUCTION_GAP_ANALYSIS.md), [roadmap](PRODUCTION_MIGRATION_PLAN.md), [progress](PROGRESS.md), [security](SECURITY.md), [README](../README.md) and root architecture/decision/progress/changelog records | Documents authorization policy, migration choices, test evidence, operation, limitations and rollback. |
+
+The public demo and organization path both process fictional sample PDFs with the mock extractor. Companies can record named decisions. Hosted SSO/MFA, customer uploads, SQS and AWS releases remain separate milestones. [Test evidence](PROGRESS.md) · [Rollback](SECURITY.md)

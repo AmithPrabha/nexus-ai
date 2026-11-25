@@ -26,3 +26,7 @@ Use deterministic 96-dimensional hashed token vectors in mock mode. Store the in
 
 ### ADR-014 · Signed sandbox receipts · 2026-11-25
 Use the pending-review transaction to create delivery intent. Keep delivery retries and failures separate from the invoice state machine. The optional self-hosted n8n webhook delegates HMAC verification and event deduplication to the same private Go receiver used by the default local sink. This keeps service credentials outside the workflow and gives concurrent receivers a database uniqueness guarantee. The workflow can reach only the private Docker network. Test valid, repeated, expired and modified events plus an unavailable workflow.
+
+### ADR-015 · Durable tenant ownership and named approvals · 2026-11-25
+
+Implemented for local M1. Retain the existing scope UUIDs and job contract, separate company ownership from session lifetime, and authorize a named membership inside the invoice transaction. Adopt the local one-time code boundary and explicit override role policy. [M1 decisions](docs/DECISIONS.md) · [Security model and rollback](docs/SECURITY.md)

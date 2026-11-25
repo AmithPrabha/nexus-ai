@@ -7,6 +7,13 @@ export const api = createClient<paths>({
   credentials: "same-origin",
   cache: "no-store",
 });
+api.use({
+  onResponse({ response, schemaPath }) {
+    if (response.status === 401 && !schemaPath.startsWith("/api/v1/auth/") && typeof window !== "undefined") {
+      window.dispatchEvent(new Event("nexus-session-ended"));
+    }
+  },
+});
 export function headers(token: string) {
   return { "X-CSRF-Token": token, Origin: window.location.origin };
 }

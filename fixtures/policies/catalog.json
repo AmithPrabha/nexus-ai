@@ -1,0 +1,17 @@
+[
+ {"id":"procurement","title":"Procurement handbook","version":"1.0","clauses":[
+  {"page":1,"clause":"P1","topic":"purchase approval authority approver high value threshold procurement","text":"The finance director approves purchases above AED 10,000 before a purchase order is issued."},
+  {"page":1,"clause":"P2","topic":"supplier onboarding documents registration bank letter vendor","text":"For supplier onboarding, procurement collects a trade licence and a bank confirmation letter."},
+  {"page":2,"clause":"P3","topic":"competitive quotation quotes sourcing bids three","text":"Procurement collects three written quotations for a competitive sourcing request."},
+  {"page":2,"clause":"P4","topic":"purchase order retention archive years keep","text":"The purchasing team retains purchase orders for five years in the procurement archive."}]},
+ {"id":"people","title":"People and travel handbook","version":"1.0","clauses":[
+  {"page":1,"clause":"H1","topic":"travel booking advance trip days","text":"Employees submit travel booking requests at least seven calendar days before departure."},
+  {"page":1,"clause":"H2","topic":"expense reimbursement receipt claim deadline","text":"Expense reimbursement claims require itemized receipts and must arrive within 30 days of the expense."},
+  {"page":2,"clause":"H3","topic":"annual leave vacation supervisor approval","text":"An employee's line manager approves annual leave requests in the HR portal."},
+  {"page":2,"clause":"H4","topic":"remote work equipment return laptop exit","text":"Departing remote employees return company laptops to IT on their last working day."}]},
+ {"id":"controls","title":"Invoice controls manual","version":"1.0","clauses":[
+  {"page":1,"clause":"C1","topic":"duplicate invoice suspected hold accounts payable","text":"Accounts payable places suspected duplicate invoices on hold and contacts the supplier for clarification."},
+  {"page":1,"clause":"C2","topic":"segregation duties requester approve own self","text":"A requester must never approve their own invoice. A different reviewer records the decision."},
+  {"page":2,"clause":"C3","topic":"rejection reason audit decision rejected documentation","text":"Reviewers record a written reason for each rejected invoice in the audit history."},
+  {"page":2,"clause":"C4","topic":"missing evidence supporting document correction review","text":"An invoice with missing supporting evidence stays in manual review until a reviewer documents a correction or override."}]}
+]

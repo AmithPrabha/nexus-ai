@@ -1,0 +1,398 @@
+[
+  {
+    "sample_id": "eval-clean",
+    "group": "text",
+    "fields": {
+      "supplier_name": "Fictional Coral Parts LLC",
+      "supplier_trn": "123456789012345",
+      "invoice_date": "2026-02-08",
+      "currency": "AED",
+      "subtotal": "800.00",
+      "vat_rate": "0.05",
+      "vat_amount": "40.00",
+      "total": "840.00",
+      "tax_treatment": "standard",
+      "invoice_number": "EV-001"
+    },
+    "rules": [],
+    "state": "READY_FOR_APPROVAL"
+  },
+  {
+    "sample_id": "eval-rounding",
+    "group": "text",
+    "fields": {
+      "supplier_name": "Fictional Coral Parts LLC",
+      "supplier_trn": "123456789012345",
+      "invoice_date": "2026-02-08",
+      "currency": "AED",
+      "subtotal": "100.10",
+      "vat_rate": "0.05",
+      "vat_amount": "5.01",
+      "total": "105.11",
+      "tax_treatment": "standard",
+      "invoice_number": "EV-002"
+    },
+    "rules": [],
+    "state": "READY_FOR_APPROVAL"
+  },
+  {
+    "sample_id": "eval-within-tolerance",
+    "group": "text",
+    "fields": {
+      "supplier_name": "Fictional Coral Parts LLC",
+      "supplier_trn": "123456789012345",
+      "invoice_date": "2026-02-08",
+      "currency": "AED",
+      "subtotal": "800.00",
+      "vat_rate": "0.05",
+      "vat_amount": "40.00",
+      "total": "840.01",
+      "tax_treatment": "standard",
+      "invoice_number": "EV-003"
+    },
+    "rules": [],
+    "state": "READY_FOR_APPROVAL"
+  },
+  {
+    "sample_id": "eval-wrong-vat",
+    "group": "text",
+    "fields": {
+      "supplier_name": "Fictional Coral Parts LLC",
+      "supplier_trn": "123456789012345",
+      "invoice_date": "2026-02-08",
+      "currency": "AED",
+      "subtotal": "800.00",
+      "vat_rate": "0.05",
+      "vat_amount": "35.00",
+      "total": "835.00",
+      "tax_treatment": "standard",
+      "invoice_number": "EV-004"
+    },
+    "rules": [
+      "VAT_MISMATCH"
+    ],
+    "state": "PENDING_REVIEW"
+  },
+  {
+    "sample_id": "eval-wrong-total",
+    "group": "text",
+    "fields": {
+      "supplier_name": "Fictional Coral Parts LLC",
+      "supplier_trn": "123456789012345",
+      "invoice_date": "2026-02-08",
+      "currency": "AED",
+      "subtotal": "800.00",
+      "vat_rate": "0.05",
+      "vat_amount": "40.00",
+      "total": "845.50",
+      "tax_treatment": "standard",
+      "invoice_number": "EV-005"
+    },
+    "rules": [
+      "TOTAL_MISMATCH"
+    ],
+    "state": "PENDING_REVIEW"
+  },
+  {
+    "sample_id": "eval-missing-trn",
+    "group": "text",
+    "fields": {
+      "supplier_name": "Fictional Coral Parts LLC",
+      "supplier_trn": null,
+      "invoice_date": "2026-02-08",
+      "currency": "AED",
+      "subtotal": "800.00",
+      "vat_rate": "0.05",
+      "vat_amount": "40.00",
+      "total": "840.00",
+      "tax_treatment": "standard",
+      "invoice_number": "EV-006"
+    },
+    "rules": [
+      "MISSING_SUPPLIER_TRN"
+    ],
+    "state": "PENDING_REVIEW"
+  },
+  {
+    "sample_id": "eval-bad-trn",
+    "group": "text",
+    "fields": {
+      "supplier_name": "Fictional Coral Parts LLC",
+      "supplier_trn": "AE123456",
+      "invoice_date": "2026-02-08",
+      "currency": "AED",
+      "subtotal": "800.00",
+      "vat_rate": "0.05",
+      "vat_amount": "40.00",
+      "total": "840.00",
+      "tax_treatment": "standard",
+      "invoice_number": "EV-007"
+    },
+    "rules": [
+      "TRN_FORMAT"
+    ],
+    "state": "PENDING_REVIEW"
+  },
+  {
+    "sample_id": "eval-duplicate",
+    "group": "text",
+    "fields": {
+      "supplier_name": "Fictional Coral Parts LLC",
+      "supplier_trn": "123456789012345",
+      "invoice_date": "2026-02-08",
+      "currency": "AED",
+      "subtotal": "800.00",
+      "vat_rate": "0.05",
+      "vat_amount": "40.00",
+      "total": "840.00",
+      "tax_treatment": "standard",
+      "invoice_number": "EV-001"
+    },
+    "rules": [
+      "DUPLICATE_INVOICE"
+    ],
+    "state": "PENDING_REVIEW"
+  },
+  {
+    "sample_id": "eval-missing-number",
+    "group": "text",
+    "fields": {
+      "supplier_name": "Fictional Coral Parts LLC",
+      "supplier_trn": "123456789012345",
+      "invoice_date": "2026-02-08",
+      "currency": "AED",
+      "subtotal": "800.00",
+      "vat_rate": "0.05",
+      "vat_amount": "40.00",
+      "total": "840.00",
+      "tax_treatment": "standard",
+      "invoice_number": null
+    },
+    "rules": [
+      "MISSING_INVOICE_NUMBER"
+    ],
+    "state": "PENDING_REVIEW"
+  },
+  {
+    "sample_id": "eval-high-total",
+    "group": "text",
+    "fields": {
+      "supplier_name": "Fictional Coral Parts LLC",
+      "supplier_trn": "123456789012345",
+      "invoice_date": "2026-02-08",
+      "currency": "AED",
+      "subtotal": "12000.00",
+      "vat_rate": "0.05",
+      "vat_amount": "600.00",
+      "total": "12600.00",
+      "tax_treatment": "standard",
+      "invoice_number": "EV-010"
+    },
+    "rules": [
+      "APPROVAL_THRESHOLD"
+    ],
+    "state": "PENDING_REVIEW"
+  },
+  {
+    "sample_id": "eval-non-aed",
+    "group": "text",
+    "fields": {
+      "supplier_name": "Fictional Coral Parts LLC",
+      "supplier_trn": "123456789012345",
+      "invoice_date": "2026-02-08",
+      "currency": "USD",
+      "subtotal": "800.00",
+      "vat_rate": "0.05",
+      "vat_amount": "40.00",
+      "total": "840.00",
+      "tax_treatment": "standard",
+      "invoice_number": "EV-011"
+    },
+    "rules": [
+      "UNSUPPORTED_TAX"
+    ],
+    "state": "PENDING_REVIEW"
+  },
+  {
+    "sample_id": "eval-mixed",
+    "group": "text",
+    "fields": {
+      "supplier_name": "Fictional Coral Parts LLC",
+      "supplier_trn": "123456789012345",
+      "invoice_date": "2026-02-08",
+      "currency": "AED",
+      "subtotal": "800.00",
+      "vat_rate": "0.05",
+      "vat_amount": "40.00",
+      "total": "840.00",
+      "tax_treatment": "mixed",
+      "invoice_number": "EV-012"
+    },
+    "rules": [
+      "UNSUPPORTED_TAX"
+    ],
+    "state": "PENDING_REVIEW"
+  },
+  {
+    "sample_id": "eval-zero-rate",
+    "group": "text",
+    "fields": {
+      "supplier_name": "Fictional Coral Parts LLC",
+      "supplier_trn": "123456789012345",
+      "invoice_date": "2026-02-08",
+      "currency": "AED",
+      "subtotal": "800.00",
+      "vat_rate": "0.00",
+      "vat_amount": "0.00",
+      "total": "800.00",
+      "tax_treatment": "zero",
+      "invoice_number": "EV-013"
+    },
+    "rules": [
+      "UNSUPPORTED_TAX",
+      "UNSUPPORTED_RATE"
+    ],
+    "state": "PENDING_REVIEW"
+  },
+  {
+    "sample_id": "eval-negative",
+    "group": "text",
+    "fields": {
+      "supplier_name": "Fictional Coral Parts LLC",
+      "supplier_trn": "123456789012345",
+      "invoice_date": "2026-02-08",
+      "currency": "AED",
+      "subtotal": "-800.00",
+      "vat_rate": "0.05",
+      "vat_amount": "-40.00",
+      "total": "-840.00",
+      "tax_treatment": "standard",
+      "invoice_number": "EV-014"
+    },
+    "rules": [
+      "NEGATIVE_SUBTOTAL",
+      "NEGATIVE_VAT_AMOUNT",
+      "NEGATIVE_TOTAL"
+    ],
+    "state": "PENDING_REVIEW"
+  },
+  {
+    "sample_id": "eval-bad-date",
+    "group": "text",
+    "fields": {
+      "supplier_name": "Fictional Coral Parts LLC",
+      "supplier_trn": "123456789012345",
+      "invoice_date": "2026-02-31",
+      "currency": "AED",
+      "subtotal": "800.00",
+      "vat_rate": "0.05",
+      "vat_amount": "40.00",
+      "total": "840.00",
+      "tax_treatment": "standard",
+      "invoice_number": "EV-015"
+    },
+    "rules": [
+      "INVOICE_DATE"
+    ],
+    "state": "PENDING_REVIEW"
+  },
+  {
+    "sample_id": "eval-missing-vat",
+    "group": "text",
+    "fields": {
+      "supplier_name": "Fictional Coral Parts LLC",
+      "supplier_trn": "123456789012345",
+      "invoice_date": "2026-02-08",
+      "currency": "AED",
+      "subtotal": "800.00",
+      "vat_rate": "0.05",
+      "vat_amount": null,
+      "total": "840.00",
+      "tax_treatment": "standard",
+      "invoice_number": "EV-016"
+    },
+    "rules": [
+      "MISSING_VAT_AMOUNT"
+    ],
+    "state": "PENDING_REVIEW"
+  },
+  {
+    "sample_id": "eval-bad-decimal",
+    "group": "text",
+    "fields": {
+      "supplier_name": "Fictional Coral Parts LLC",
+      "supplier_trn": "123456789012345",
+      "invoice_date": "2026-02-08",
+      "currency": "AED",
+      "subtotal": "800.00",
+      "vat_rate": "0.05",
+      "vat_amount": "40.00",
+      "total": "eight hundred",
+      "tax_treatment": "standard",
+      "invoice_number": "EV-017"
+    },
+    "rules": [
+      "INVALID_TOTAL"
+    ],
+    "state": "PENDING_REVIEW"
+  },
+  {
+    "sample_id": "eval-discount",
+    "group": "text",
+    "fields": {
+      "supplier_name": "Fictional Coral Parts LLC",
+      "supplier_trn": "123456789012345",
+      "invoice_date": "2026-02-08",
+      "currency": "AED",
+      "subtotal": "800.00",
+      "vat_rate": "0.05",
+      "vat_amount": "40.00",
+      "total": "840.00",
+      "tax_treatment": "standard",
+      "invoice_number": "EV-018"
+    },
+    "rules": [
+      "EXTRACTION_WARNING"
+    ],
+    "state": "PENDING_REVIEW"
+  },
+  {
+    "sample_id": "eval-scan",
+    "group": "scan",
+    "fields": null,
+    "rules": [
+      "MISSING_SUPPLIER_NAME",
+      "MISSING_SUPPLIER_TRN",
+      "MISSING_INVOICE_NUMBER",
+      "MISSING_INVOICE_DATE",
+      "MISSING_CURRENCY",
+      "MISSING_SUBTOTAL",
+      "MISSING_VAT_RATE",
+      "MISSING_VAT_AMOUNT",
+      "MISSING_TOTAL",
+      "MISSING_TAX_TREATMENT",
+      "UNSUPPORTED_TAX",
+      "EXTRACTION_WARNING"
+    ],
+    "state": "PENDING_REVIEW"
+  },
+  {
+    "sample_id": "eval-arabic",
+    "group": "arabic",
+    "fields": null,
+    "rules": [
+      "MISSING_SUPPLIER_NAME",
+      "MISSING_SUPPLIER_TRN",
+      "MISSING_INVOICE_NUMBER",
+      "MISSING_INVOICE_DATE",
+      "MISSING_CURRENCY",
+      "MISSING_SUBTOTAL",
+      "MISSING_VAT_RATE",
+      "MISSING_VAT_AMOUNT",
+      "MISSING_TOTAL",
+      "MISSING_TAX_TREATMENT",
+      "UNSUPPORTED_TAX"
+    ],
+    "state": "PENDING_REVIEW"
+  }
+]

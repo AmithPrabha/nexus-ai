@@ -1,0 +1,14 @@
+services:
+  integration:
+    build: {context: ., dockerfile: services/ai/Dockerfile}
+    working_dir: /srv
+    environment:
+      GATEWAY_URL: http://gateway:8080
+      PUBLIC_ORIGIN: ${PUBLIC_ORIGIN:-http://localhost:3000}
+      SERVICE_TOKEN: ${SERVICE_TOKEN:?}
+      TEST_DB: postgres://postgres:${POSTGRES_PASSWORD:?}@postgres/nexus?sslmode=disable
+      PYTHONPATH: /srv
+    volumes:
+      - ./scripts:/checks:ro
+      - ./fixtures/invoices:/fixtures/invoices:ro
+    entrypoint: ["python"]

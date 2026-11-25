@@ -1,0 +1,34 @@
+{
+  "id": "NexusReviewLocal1",
+  "name": "NexusAI local review receipt",
+  "active": false,
+  "versionId": "5a8690a0-fa15-4cc9-9914-baf39a134cc7",
+  "settings": {"executionOrder": "v1"},
+  "nodes": [
+    {
+      "id": "1f6b70f8-4fd2-4aa9-8239-ad09d3bb3cd7",
+      "webhookId": "b65830ac-0b13-4840-8bb2-a39f13b5f930",
+      "name": "Pending review",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [100, 220],
+      "parameters": {"httpMethod": "POST", "path":"nexus-review", "responseMode":"lastNode", "options":{}}
+    },
+    {
+      "id": "f1cd0057-9584-42c2-8392-9d766395bb5c",
+      "name": "Verify and record sandbox receipt",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [400, 220],
+      "parameters": {
+        "method": "POST",
+        "url": "http://gateway:8081/internal/notifications/receive",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.body }}",
+        "options": {"timeout": 3000}
+      }
+    }
+  ],
+  "connections": {"Pending review":{"main":[[{"node":"Verify and record sandbox receipt","type":"main","index":0}]]}}
+}

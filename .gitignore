@@ -1,1 +1,13 @@
 .DS_Store
+
+.env
+.venv/
+.cache/
+__pycache__/
+.pytest_cache/
+*.pyc
+node_modules/
+.next/
+*.tsbuildinfo
+test-results/
+playwright-report/

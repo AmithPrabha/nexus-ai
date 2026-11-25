@@ -1,0 +1,102 @@
+name: nexusai
+services:
+  web:
+    build: {context: ., dockerfile: apps/web/Dockerfile}
+    ports: ["127.0.0.1:3000:3000"]
+    depends_on:
+      gateway: {condition: service_healthy}
+    healthcheck:
+      test: ["CMD","node","-e","fetch('http://127.0.0.1:3000').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+  postgres:
+    image: pgvector/pgvector:0.8.1-pg17
+    environment:
+      POSTGRES_DB: nexus
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?run make setup}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL","pg_isready -h 127.0.0.1 -U postgres -d $$POSTGRES_DB"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+  redis:
+    image: redis:7.4-alpine
+    command: ["redis-server","--appendonly","yes"]
+    volumes: [redisdata:/data]
+    healthcheck:
+      test: ["CMD","redis-cli","ping"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+  migrate:
+    image: pgvector/pgvector:0.8.1-pg17
+    depends_on:
+      postgres: {condition: service_healthy}
+    environment:
+      PGHOST: postgres
+      PGDATABASE: nexus
+      PGUSER: postgres
+      PGPASSWORD: ${POSTGRES_PASSWORD:?}
+      GATEWAY_PASSWORD: ${GATEWAY_PASSWORD:?}
+      POLICY_PASSWORD: ${POLICY_PASSWORD:?}
+    volumes:
+      - ./migrations:/migrations:ro
+      - ./infra/migrate.sh:/migrate.sh:ro
+    entrypoint: ["sh","/migrate.sh"]
+  gateway:
+    build: {context: ., dockerfile: services/gateway/Dockerfile}
+    ports: ["127.0.0.1:8080:8080"]
+    depends_on:
+      seed: {condition: service_completed_successfully}
+      redis: {condition: service_healthy}
+    environment:
+      DATABASE_URL: postgres://nexus_gateway:${GATEWAY_PASSWORD:?}@postgres/nexus?sslmode=disable
+      REDIS_ADDR: redis:6379
+      PUBLIC_ORIGIN: ${PUBLIC_ORIGIN:-http://localhost:3000}
+      SERVICE_TOKEN: ${SERVICE_TOKEN:?}
+    healthcheck:
+      test: ["CMD","wget","-q","-O","/dev/null","http://127.0.0.1:8080/readyz"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+    volumes:
+      - ./fixtures/invoices:/fixtures/invoices:ro
+      - ./evaluation:/evaluation:ro
+  seed:
+    build: {context: ., dockerfile: services/ai/Dockerfile}
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+    environment:
+      SEED_DB: postgres://postgres:${POSTGRES_PASSWORD:?}@postgres/nexus?sslmode=disable
+    volumes:
+      - ./fixtures/policies:/fixtures/policies:ro
+    command: ["python","-m","app.seed"]
+  ai-worker:
+    build: {context: ., dockerfile: services/ai/Dockerfile}
+    command: ["python","-m","app.worker"]
+    depends_on:
+      redis: {condition: service_healthy}
+      gateway: {condition: service_started}
+    environment:
+      SERVICE_TOKEN: ${SERVICE_TOKEN:?}
+      REDIS_URL: redis://redis:6379/0
+    volumes:
+      - ./fixtures/invoices:/fixtures/invoices:ro
+  ai-api:
+    volumes:
+      - ./fixtures/invoices:/fixtures/invoices:ro
+    build: {context: ., dockerfile: services/ai/Dockerfile}
+    environment:
+      POLICY_DB: postgres://nexus_policy:${POLICY_PASSWORD:?}@postgres/nexus?sslmode=disable
+      SERVICE_TOKEN: ${SERVICE_TOKEN:?}
+    healthcheck:
+      test: ["CMD","python","-c","import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=2)"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+volumes:
+  pgdata:
+  redisdata:

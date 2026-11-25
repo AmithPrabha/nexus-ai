@@ -1,0 +1,32 @@
+name: local-mvp
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.27.4'
+          cache-dependency-path: services/gateway/go.sum
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+      - uses: astral-sh/setup-uv@v6
+        with: {version: '0.8.15'}
+      - run: uv python install 3.12
+      - run: make test lint web-check security
+      - run: make up migrate smoke integration policy
+      - working-directory: apps/web
+        run: npx playwright install --with-deps chromium
+      - working-directory: apps/web
+        run: npm run e2e
+      - run: make sandbox sandbox-check
+      - run: make eval
+      - if: always()
+        run: make sandbox-down

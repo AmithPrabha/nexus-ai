@@ -16,4 +16,13 @@ All entries below are proposed baseline decisions inherited from or expanding PR
 | ADR-011 | Proposed internal job claim endpoint | Explicit attempt fencing for worker recovery; validate against actual implementation and OpenAPI. |
 
 ## Pending decisions
-Actual repository layout, compatible pinned versions, provider/model and embedding dimensions, hosting/budget, production origin/cookie topology, final brand name, private upload licensing/security review. Record decisions when resolved; do not invent credentials or availability.
+The local layout and dependency locks are in the checkout. Mock embeddings use 96 dimensions. Remaining decisions cover a real provider/model, hosting and budget, production origin/proxy topology, final brand name, and private-upload licensing and security.
+
+### ADR-012 · Local foundation · 2026-11-25
+The seven repository documents matched the final development archive byte-for-byte, so its missing PROJECT_SPEC.md was restored verbatim. Use an independent Next.js application in this repo and reserve portfolio changes for release approval. The gateway verifies a single exact browser origin and uses an opaque random session secret stored only as a digest in Postgres. This supports revocable, expiring anonymous workspaces and same-origin UI proxying. The migration job owns schema changes and runtime roles receive explicit grants. Verify with the Compose migration replay and HTTP smoke tests.
+
+### ADR-013 · Mock retrieval · 2026-11-25
+Use deterministic 96-dimensional hashed token vectors in mock mode. Store the index version, scope each query with workspace assignments, fuse vector and keyword ranks, and quote a single clause exactly. This provides reproducible offline retrieval and lets the gateway independently verify the entire mock answer. The short fictional clauses retain their natural boundaries. The mock cannot establish real embedding or language-model quality. Verify with the policy integration suite and the separately labeled benchmark.
+
+### ADR-014 · Signed sandbox receipts · 2026-11-25
+Use the pending-review transaction to create delivery intent. Keep delivery retries and failures separate from the invoice state machine. The optional self-hosted n8n webhook delegates HMAC verification and event deduplication to the same private Go receiver used by the default local sink. This keeps service credentials outside the workflow and gives concurrent receivers a database uniqueness guarantee. The workflow can reach only the private Docker network. Test valid, repeated, expired and modified events plus an unavailable workflow.

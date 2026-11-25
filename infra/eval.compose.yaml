@@ -1,0 +1,41 @@
+# Used only by scripts/evaluate.py with a freshly allocated Compose project.
+services:
+  postgres:
+    environment: {POSTGRES_DB: nexus_eval}
+  migrate:
+    environment: {PGDATABASE: nexus_eval}
+  seed:
+    environment:
+      SEED_DB: postgres://postgres:${POSTGRES_PASSWORD:?}@postgres/nexus_eval?sslmode=disable
+  gateway:
+    ports: !reset []
+    environment:
+      DATABASE_URL: postgres://nexus_gateway:${GATEWAY_PASSWORD:?}@postgres/nexus_eval?sslmode=disable
+    volumes:
+      - ./fixtures/evaluation/pdfs:/fixtures/invoices:ro
+  ai-api:
+    environment:
+      POLICY_DB: postgres://nexus_policy:${POLICY_PASSWORD:?}@postgres/nexus_eval?sslmode=disable
+    volumes:
+      - ./fixtures/evaluation/pdfs:/fixtures/invoices:ro
+  ai-worker:
+    volumes:
+      - ./fixtures/evaluation/pdfs:/fixtures/invoices:ro
+  invoice-bench: &bench
+    build: {context: ., dockerfile: services/ai/Dockerfile}
+    user: "${EVAL_UID:?}:${EVAL_GID:?}"
+    volumes:
+      - ./scripts:/checks:ro
+      - ./fixtures/evaluation:/dataset:ro
+      - ${EVAL_OUTPUT:?}:/results
+    environment:
+      GATEWAY_URL: http://gateway:8080
+      PUBLIC_ORIGIN: ${PUBLIC_ORIGIN:-http://localhost:3000}
+      TEST_DB: postgres://postgres:${POSTGRES_PASSWORD:?}@postgres/nexus_eval?sslmode=disable
+    command: ["python","/checks/bench.py","invoices"]
+  policy-bench:
+    <<: *bench
+    environment:
+      GATEWAY_URL: http://gateway:8080
+      PUBLIC_ORIGIN: ${PUBLIC_ORIGIN:-http://localhost:3000}
+    command: ["python","/checks/bench.py","questions"]

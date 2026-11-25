@@ -1,0 +1,494 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "NexusAI internal jobs",
+    "version": "0.1.0"
+  },
+  "servers": [
+    {
+      "url": "http://gateway:8081"
+    }
+  ],
+  "paths": {
+    "/internal/jobs/{id}/claim": {
+      "post": {
+        "operationId": "claimJob",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "disposition": {
+                          "enum": [
+                            "busy",
+                            "terminal"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "disposition"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "disposition": {
+                          "const": "claimed"
+                        },
+                        "sample_id": {
+                          "type": "string"
+                        },
+                        "attempt": {
+                          "type": "integer"
+                        },
+                        "lease_token": {
+                          "type": "string"
+                        },
+                        "expires_at": {
+                          "type": "string",
+                          "format": "date-time"
+                        }
+                      },
+                      "required": [
+                        "disposition",
+                        "sample_id",
+                        "attempt",
+                        "lease_token",
+                        "expires_at"
+                      ],
+                      "additionalProperties": false
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Safe error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {},
+                "required": [],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/internal/jobs/{id}/complete": {
+      "post": {
+        "operationId": "completeJob",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "disposition": {
+                      "const": "accepted"
+                    }
+                  },
+                  "required": [
+                    "disposition"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Safe error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "attempt": {
+                    "type": "integer"
+                  },
+                  "lease_token": {
+                    "type": "string"
+                  },
+                  "latency_ms": {
+                    "type": "integer"
+                  },
+                  "extraction": {
+                    "type": "object",
+                    "properties": {
+                      "fields": {
+                        "$ref": "#/components/schemas/Fields"
+                      },
+                      "evidence": {
+                        "type": "object",
+                        "additionalProperties": {
+                          "$ref": "#/components/schemas/Evidence"
+                        }
+                      },
+                      "warnings": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "required": [
+                      "fields",
+                      "evidence",
+                      "warnings"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "attempt",
+                  "lease_token",
+                  "latency_ms",
+                  "extraction"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/internal/jobs/{id}/fail": {
+      "post": {
+        "operationId": "failJob",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "disposition": {
+                      "const": "accepted"
+                    }
+                  },
+                  "required": [
+                    "disposition"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Safe error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "attempt": {
+                    "type": "integer"
+                  },
+                  "lease_token": {
+                    "type": "string"
+                  },
+                  "latency_ms": {
+                    "type": "integer"
+                  },
+                  "error_code": {
+                    "type": "string"
+                  },
+                  "retryable": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "attempt",
+                  "lease_token",
+                  "latency_ms",
+                  "error_code",
+                  "retryable"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        }
+      }
+    },
+    "/internal/notifications/receive": {
+      "post": {
+        "operationId": "recordSandboxReceipt",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "event_id": {
+                      "type": "string",
+                      "format": "uuid"
+                    }
+                  },
+                  "required": [
+                    "event_id"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Safe error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "payload": {
+                    "type": "string"
+                  },
+                  "signature": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "payload",
+                  "signature"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "security": [],
+        "description": "Authenticated by a signed HMAC envelope with a five-minute replay window. The local workflow forwards the signed payload to this private listener."
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Fields": {
+        "type": "object",
+        "properties": {
+          "supplier_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "supplier_trn": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "invoice_number": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "invoice_date": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "currency": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "subtotal": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "vat_rate": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "vat_amount": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "total": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "tax_treatment": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "supplier_name",
+          "supplier_trn",
+          "invoice_number",
+          "invoice_date",
+          "currency",
+          "subtotal",
+          "vat_rate",
+          "vat_amount",
+          "total",
+          "tax_treatment"
+        ],
+        "additionalProperties": false
+      },
+      "Evidence": {
+        "type": "object",
+        "properties": {
+          "page": {
+            "type": "integer"
+          },
+          "excerpt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "page",
+          "excerpt"
+        ],
+        "additionalProperties": false
+      },
+      "Error": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              },
+              "request_id": {
+                "type": "string",
+                "format": "uuid"
+              }
+            },
+            "required": [
+              "code",
+              "message",
+              "request_id"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "error"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "securitySchemes": {
+      "service": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    }
+  },
+  "security": [
+    {
+      "service": []
+    }
+  ]
+}

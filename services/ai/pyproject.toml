@@ -1,0 +1,12 @@
+[project]
+name = "nexusai-ai"
+version = "0.1.0"
+requires-python = ">=3.12,<3.13"
+dependencies = ["fastapi", "pydantic", "uvicorn", "pymupdf>=1.26,<2", "redis", "httpx", "psycopg[binary]"]
+
+[dependency-groups]
+dev = ["pytest", "ruff"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]

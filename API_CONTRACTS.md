@@ -1,38 +1,30 @@
-# API contracts — proposed baseline
-PROJECT_SPEC.md section 8 is authoritative for scope. Implement machine-readable OpenAPI and JSON schemas under packages/contracts; generate/check typed client against them. Details below expand the specification; reconcile before coding and record changes in DECISIONS.md. No endpoints implemented yet.
+# NexusAI API contracts
 
-## Conventions
-Public prefix /api/v1; JSON, UUID identifiers, UTC RFC3339 timestamps, decimal strings for money. Session cookie and CSRF on mutations; scoped queries, 404 for inaccessible IDs. Request ID in responses/logs. Error: {"error":{"code":"VALIDATION_ERROR","message":"Safe message","request_id":"..."}}. 400 malformed, 401/403 auth, 404 scope, 409 stale/conflict, 429 quota, 503 dependency unavailable. No stack traces. Cursor pagination with bounded limit (default 20, max 100). Unknown fields rejected on mutation schemas.
+The public [OpenAPI document](packages/contracts/openapi.json) describes the Go gateway. The [private gateway contract](packages/contracts/jobs.openapi.json) describes the worker and signed receipt routes. The [FastAPI contract](packages/contracts/ai.openapi.json) describes the AI service. The dashboard uses openapi-fetch and [generated TypeScript types](apps/web/lib/schema.d.ts). After changing a schema run `cd apps/web && npm run contracts`. CI checks the generated file with `npm run contracts -- --check`.
 
-| Method/path (public prefix) | Request | Success |
+## Public API
+
+Routes use /api/v1, JSON and UUID identifiers. Monetary fields are nullable decimal strings. All responses have an X-Request-ID. Errors use an error object containing code, message and request_id. Invalid input returns 400, absent sessions 401, failed request verification 403, inaccessible IDs 404, stale versions or conflicting idempotency keys 409, exhausted quotas 429 and dependency failures 503.
+
+| Action | Method and path | Contract |
 |---|---|---|
-| POST /demo/sessions | empty | 201 session_id, expires_at; cookie |
-| GET /samples | none | 200 items: sample_id,title,description,preview_url (safe fixture only) |
-| POST /invoices | sample_id; Idempotency-Key header | 202 invoice_id,job_id,status |
-| GET /invoices | status,cursor,limit | 200 items,next_cursor |
-| GET /invoices/{id} | none | 200 invoice,revision,validation_results,version |
-| GET /jobs/{id} | none | 200 job_id,status,attempts,error_code (nullable) |
-| PATCH /invoices/{id}/review | version,fields,reason | 200 updated invoice/revision/validation |
-| POST /invoices/{id}/decision | version,decision (approve/reject),reason | 200 invoice_id,status,version |
-| POST /invoices/{id}/retry | proposed version + Idempotency-Key | 202 invoice_id,job_id,status |
-| GET /invoices/{id}/audit | cursor,limit | 200 items,next_cursor |
-| POST /policy/questions | question (1–1000 chars) | 200 answer,abstained,citations,telemetry |
-| GET /metrics/demo | none | 200 measured counts,latency,tokens,cost or null,mode |
-| GET /evaluation | none | 200 versioned benchmark or explicit not_run status |
+| Start or resume | POST /demo/sessions | Exact Origin. Returns 201 with session_id, expires_at and csrf_token. Creates an HttpOnly SameSite=Lax cookie on first use. |
+| Reset | POST /demo/reset | Expires the current workspace. |
+| Select and preview | GET /samples, GET /samples/{sample}/preview | Fixed fictional catalog and session-protected PDFs. |
+| Enqueue | POST /invoices | sample_id and Idempotency-Key. Returns 202 with invoice_id, job_id and status. A matching replay returns the original response. |
+| Inspect | GET /invoices, GET /invoices/{id}, GET /jobs/{id} | Lists accept a status, cursor and bounded limit (1–100, default 20). Detail includes version, revision and validation results. |
+| Correct | PATCH /invoices/{id}/review | version, editable fields and nonempty reason. Saves a new revision, invalidates evidence on edited fields and reruns rules. |
+| Decide | POST /invoices/{id}/decision | version, approve or reject, and a reason for rejection or overriding warnings. Final states are terminal. |
+| Retry | POST /invoices/{id}/retry | Failed invoice, current version and Idempotency-Key. Starts a new job. |
+| Inspect history | GET /invoices/{id}/audit | Ascending paged timeline with actor, state, reason, timestamp and request ID. |
+| Ask policy | POST /policy/questions | 1–1000 characters. Returns answer, abstained, trusted citations and measured mock telemetry. |
+| Inspect metrics | GET /metrics/demo | Current workspace counts, mean operation latency and sandbox notification count. Unknown token and cost fields are null. |
+| Inspect evaluation | GET /evaluation | Versioned public benchmark artifact or an explicit not_run status. |
 
-Health endpoints outside prefix: GET /healthz, /readyz; 200 healthy/ready or 503 not ready. Do not leak dependency credentials.
+All scoped mutations require the configured Origin and X-CSRF-Token. Reads require the workspace cookie. Unknown JSON fields on mutations are rejected. Anonymous /healthz and /readyz are outside the API prefix. Readiness verifies the migration ledger and Redis. AI health is checked independently by Compose.
 
-## Extraction payload
-```json
-{"supplier_name":"Example Trading LLC","supplier_trn":"100123456789012","invoice_number":"DEMO-001","invoice_date":"2026-01-01","currency":"AED","subtotal":"100.00","vat_rate":"0.05","vat_amount":"5.00","total":"105.00","tax_treatment":"standard","evidence":{"subtotal":{"page":1,"excerpt":"Subtotal AED 100.00"}},"warnings":[]}
-```
-Fictional example. Fields nullable when missing; evidence map for extracted fields; exact excerpts verified against page text. tax_treatment standard/zero/exempt/mixed/unknown. VAT rate expressed as fraction. Validation result: rule_code,severity,expected,actual,message. Review fields allow only editable extraction fields, not status or evidence; preserve original extraction. Reject stale version with 409. Require reason for rejection/override. Never approve via model.
+## Private services
 
-## Internal service contracts
-Private network + service credential; reject unauthorized/stale attempts. Proposed POST /internal/jobs/{id}/claim returns attempt and lease token/expiry for eligible job; atomic claim and state transition. POST /internal/jobs/{id}/complete accepts attempt,lease_token,extraction,telemetry; POST /internal/jobs/{id}/fail accepts attempt,lease_token,error_code,retryable,telemetry. Duplicate completion returns same durable result; stale attempt 409. Worker ACK only after durable accepted result or confirmed terminal/stale disposition. Redis message: event_id,job_id,workspace_id,document_id,schema_version; no secrets or PDF text. Gateway determines retry eligibility and outbox scheduling. Internal FastAPI /extract and /retrieve-answer accept scoped document/policy context and request ID; /health reports service liveness. Worker may call extraction library directly. Retrieval output: answer,abstained,citations [{chunk_id}],reason; gateway resolves page/clause/excerpt from trusted metadata. Telemetry includes mode,provider,model,latency_ms,input_tokens,output_tokens,estimated_cost_aed (nullable when unavailable).
+The gateway private listener accepts a service Bearer credential on port 8081. A claim returns claimed with sample_id, attempt, lease_token and expires_at, or a busy/terminal disposition. A completion carries the matching attempt, lease, measured latency and extraction (fields, evidence and warnings). Failure adds a bounded error code and retryable flag. Stale attempts return 409. Replaying a durable completion preserves the same revision. Each Redis message carries event_id, job_id, workspace_id, document_id (sample key) and schema_version.
 
-## Notification
-HMAC signed event with event_id,timestamp,invoice_id,state,reason_codes,demo flag; replay window and receiver deduplication. Public demo logs sandbox notification only. No approval endpoint in n8n. Version payloads and test signature, replay, duplicate and failure cases.
-
-## Contract tests
-Idempotency same key/same body vs changed body; session isolation; invalid sample; stale version; stale worker attempt; retry exhaustion; invalid citation; quota; unavailable provider; no real notifications. OpenAPI must reflect actual behavior, not merely this draft.
+Internal FastAPI exposes /health, authenticated /extract with sample_id and authenticated /retrieve-answer with workspace_id and question. The worker uses the same extraction library directly. The gateway resolves each proposed chunk ID against its assigned policy and checks the quoted text. Simulated review notifications carry reason codes and a unique invoice/version pair. Invoice detail includes sandbox_notification (null, PENDING, RECORDED or FAILED). The independent dispatcher can use an isolated n8n webhook. The private receiver verifies the signed envelope and deduplicates durable receipts. No public notification or approval webhook is present.
